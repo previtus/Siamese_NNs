@@ -1,0 +1,24 @@
+SIAMESE NNs
+
+main info source:
+- https://www.thesprucepets.com/facts-about-siamese-cats-4173491
+
+https://github.com/keras-team/keras/blob/master/examples/mnist_siamese.py
+- keras official code, used dense layers - fully connected
+https://keras.io/getting-started/functional-api-guide/#multi-input-and-multi-output-models
+- another keras doc, simpler, non siamese
+
+
+https://software.intel.com/en-us/articles/keras-implementation-of-siamese-like-networks
+- keras, with Conv instead of Dense, but a custom network instead of typical SiameseCNN
+
+
+https://sorenbouma.github.io/blog/oneshot/
+- mixed with one shot learning
+
+
+
+another
+https://towardsdatascience.com/how-to-potty-train-a-siamese-network-3df6ca5e44da
+(with tripplet loss) https://towardsdatascience.com/lossless-triplet-loss-7e932f990b24
+
