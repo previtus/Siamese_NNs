@@ -1,7 +1,9 @@
 # Initial tests with Siamese CNNs
 
-EPOCHS = 30
-SUBSET = 20000
+EPOCHS = 50
+SUBSET = 53000
+SUBSET = 10000
+#SUBSET = 100
 SIZE = [100,100]
 
 # using code from:
@@ -31,12 +33,16 @@ from keras.layers import Input, Conv2D, Lambda, merge, Dense, Flatten, MaxPoolin
 from keras.models import Model, Sequential
 from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l2
+from tqdm import tqdm
 
 path_old = "/scratch/ruzicka/dataset_initial_view/01_10_twoTimes-OrthoAndVector/2010_ortho_2013_vector/300x300_tiles_2010/"
 path_new = "/scratch/ruzicka/dataset_initial_view/01_10_twoTimes-OrthoAndVector/2013_ortho_2014_vector/300x300_tiles_2013/"
 
 tile_paths_old = [f for f in listdir(path_old) if isfile(join(path_old, f))]
 tile_paths_new = [f for f in listdir(path_new) if isfile(join(path_new, f))]
+
+tile_paths_old = tile_paths_old[0:-1]
+tile_paths_new = tile_paths_new[0:-1]
 
 print("tile_paths_old", len(tile_paths_old), tile_paths_old[0])
 print("tile_paths_new", len(tile_paths_new), tile_paths_new[0])
@@ -147,7 +153,10 @@ def create_pairs(listA, listB):
     return np.array(pairs), np.array(labels)
 
 def load_images_with_keras(img_paths, target_size=None):
-    imgs_arr = [img_to_array(load_img(path, target_size=target_size)) for path in img_paths]
+    imgs_arr = []
+    for path in tqdm(img_paths):
+        imgs_arr.append( img_to_array(load_img(path, target_size=target_size)) )
+    #imgs_arr = [img_to_array(load_img(path, target_size=target_size)) for path in img_paths]
     imgs_arr = np.array(imgs_arr)
     return imgs_arr
 
@@ -211,6 +220,7 @@ print("same 1 / different 0:", labels[0])
 #left_input = load_images_with_matlibplot(left_input)
 #right_input = load_images_with_matlibplot(right_input)
 
+"""
 # version B
 left_input = load_images_with_keras(left_input,target_size=SIZE)
 right_input = load_images_with_keras(right_input,target_size=SIZE)
@@ -218,6 +228,17 @@ left_input = left_input.astype('float32')
 right_input = right_input.astype('float32')
 left_input /= 255
 right_input /= 255
+"""
+
+# Load preloaded data from h5!
+import h5py
+hdf5_path = "/scratch/ruzicka/dataset_initial_view/01_10_twoTimes-OrthoAndVector/preloadedImgs_100_100x100.h5"
+hdf5_file = h5py.File(hdf5_path, "r")
+left_input = hdf5_file['left_input'][:]
+right_input = hdf5_file['right_input'][:]
+labels = hdf5_file['labels'][:]
+hdf5_file.close()
+
 
 input_shape = left_input[0].shape
 
@@ -262,7 +283,7 @@ print("left_input_test",left_input_test.shape)
 print("right_input_test",right_input_test.shape)
 print("labels_test",labels_test.shape)
 
-def create_base_network(input_shape):
+def create_base_network(input_shape, featureSize=4096):
     '''Base network to be shared (eq. to feature extraction).
     '''
     # Bigger model from an example
@@ -297,7 +318,7 @@ def create_base_network(input_shape):
     convnet.add(Conv2D(256, (4, 4), activation='relu', kernel_initializer=W_init, kernel_regularizer=l2(2e-4),
                        bias_initializer=b_init))
     convnet.add(Flatten())
-    convnet.add(Dense(4096, activation="sigmoid", kernel_regularizer=l2(1e-3), kernel_initializer=W_init,
+    convnet.add(Dense(featureSize, activation="sigmoid", kernel_regularizer=l2(1e-3), kernel_initializer=W_init,
                       bias_initializer=b_init))
     return convnet
 
@@ -380,9 +401,12 @@ distance = Lambda(euclidean_distance,
 model = Model([input_a, input_b], distance)
 
 
+model.summary()
+
 # train
 rms = RMSprop(lr=0.0001)
 model.compile(loss=contrastive_loss, optimizer=rms, metrics=[accuracy])
+#alt loss="binary_crossentropy"
 history = model.fit([left_input_train, right_input_train], labels_train,
           batch_size=128,
           epochs=EPOCHS,
